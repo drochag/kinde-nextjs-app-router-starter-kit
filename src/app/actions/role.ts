@@ -3,50 +3,11 @@
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import {
   Configuration,
-  createKindeServerClient,
-  GrantType,
-  PermissionsApi,
-  SessionManager,
   OrganizationsApi,
-  UsersApi,
   RolesApi,
 } from "@kinde-oss/kinde-typescript-sdk";
-
-let store: Record<string, unknown> = {};
-
-const sessionManager: SessionManager = {
-  async getSessionItem(key: string) {
-    return store[key];
-  },
-  async setSessionItem(key: string, value: unknown) {
-    store[key] = value;
-  },
-  async removeSessionItem(key: string) {
-    delete store[key];
-  },
-  async destroySession() {
-    store = {};
-  },
-};
-
-const generateServerClient = () =>
-  createKindeServerClient(GrantType.CLIENT_CREDENTIALS, {
-    authDomain: process.env.KINDE_ISSUER_URL,
-    clientId: process.env.KINDE_MANAGEMENT_CLIENT_ID,
-    clientSecret: process.env.KINDE_MANAGEMENT_CLIENT_SECRET,
-    logoutRedirectURL: process.env.KINDE_POST_LOGOUT_REDIRECT_URL,
-    audience: `${process.env.KINDE_ISSUER_URL}/api`,
-  });
-
-export async function refreshTokens() {
-  try {
-    const currentSession = await getKindeServerSession();
-    currentSession.refreshTokens(); // BUG: this does nothing
-  } catch (error) {
-    console.error(error);
-    throw error;
-  }
-}
+import { generateServerClient, sessionManager } from "./session-management";
+import { revalidatePath } from "next/cache";
 
 export async function query() {
   const kindeApiClient = generateServerClient();
@@ -108,6 +69,7 @@ export async function update(formData: FormData) {
     });
 
     await currentSession.refreshTokens();
+    revalidatePath("/dashboard", "layout");
 
     return true;
   } catch (error) {

@@ -1,9 +1,12 @@
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import { query, update } from "../app/actions/role";
 
-export default async function PermissionsForm() {
+const Roles = async ({
+  session,
+}: {
+  session: ReturnType<typeof getKindeServerSession>;
+}) => {
   const { roles } = await query();
-  const session = getKindeServerSession();
   const userRoles = (await session.getRoles()) || [];
 
   return (
@@ -30,4 +33,6 @@ export default async function PermissionsForm() {
       </button>
     </form>
   );
-}
+};
+
+export default Roles;

@@ -1,8 +1,10 @@
 import OrganizationInfo from "@/components/organization-info";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
-import { refreshTokens } from "../actions/role";
 import Permissions from "@/components/permissions";
-import PermissionsForm from "@/components/permissions-form";
+import { refreshTokens } from "../actions";
+import Roles from "@/components/roles";
+
+export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
   const session = getKindeServerSession();
@@ -19,16 +21,16 @@ export default async function Dashboard() {
         </p>
       </div>
       <br />
-      <form className="form" action={refreshTokens}>
+      <form className="form" action={refreshTokens.bind(null, "/dashboard")}>
         <button className="btn btn-primary" type="submit">
           Refresh Tokens
         </button>
       </form>
       <div className="card start-hero">
         <OrganizationInfo organization={organization} />
-        <Permissions />
+        <Permissions session={session} />
         <br />
-        <PermissionsForm />
+        <Roles session={session} />
       </div>
     </div>
   );
