@@ -1,4 +1,15 @@
-export default function Dashboard() {
+import OrganizationInfo from "@/components/organization-info";
+import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
+import Permissions from "@/components/permissions";
+import { refreshTokens } from "../actions";
+import Roles from "@/components/roles";
+
+export const dynamic = "force-dynamic";
+
+export default async function Dashboard() {
+  const session = getKindeServerSession();
+  const organization = await session.getOrganization();
+
   return (
     <div className="container">
       <div className="card start-hero">
@@ -9,9 +20,18 @@ export default function Dashboard() {
           Build the important stuff.
         </p>
       </div>
-      <section className="next-steps-section">
-        <h2 className="text-heading-1">Next steps for you</h2>
-      </section>
+      <br />
+      <form className="form" action={refreshTokens.bind(null, "/dashboard")}>
+        <button className="btn btn-primary" type="submit">
+          Refresh Tokens
+        </button>
+      </form>
+      <div className="card start-hero">
+        <OrganizationInfo organization={organization} />
+        <Permissions session={session} />
+        <br />
+        <Roles session={session} />
+      </div>
     </div>
   );
 }
