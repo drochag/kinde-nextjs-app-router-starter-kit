@@ -1,7 +1,14 @@
-'use server'
+"use server";
 
-import { getKindeServerSession } from '@kinde-oss/kinde-auth-nextjs/server';
-import { Configuration, createKindeServerClient, GrantType, OrganizationsApi, SessionManager, UsersApi } from '@kinde-oss/kinde-typescript-sdk';
+import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
+import {
+  Configuration,
+  createKindeServerClient,
+  GrantType,
+  OrganizationsApi,
+  SessionManager,
+  UsersApi,
+} from "@kinde-oss/kinde-typescript-sdk";
 
 let store: Record<string, unknown> = {};
 
@@ -22,15 +29,15 @@ const sessionManager: SessionManager = {
 
 export async function refreshTokens() {
   try {
-    const currentSession = await getKindeServerSession()
-    currentSession.refreshTokens() // BUG: this does nothing
+    const currentSession = await getKindeServerSession();
+    await currentSession.refreshTokens(); // BUG: this does nothing
   } catch (error) {
-    console.error(error)
-    throw error
+    console.error(error);
+    throw error;
   }
 }
 
-export async function create (formData: FormData) {
+export async function create(formData: FormData) {
   try {
     const kindeApiClient = createKindeServerClient(
       GrantType.CLIENT_CREDENTIALS,
@@ -40,7 +47,7 @@ export async function create (formData: FormData) {
         clientSecret: process.env.KINDE_MANAGEMENT_CLIENT_SECRET,
         logoutRedirectURL: process.env.KINDE_POST_LOGOUT_REDIRECT_URL,
         audience: `${process.env.KINDE_ISSUER_URL}/api`,
-      },
+      }
     );
 
     const token = await kindeApiClient.getToken(sessionManager);
@@ -53,27 +60,29 @@ export async function create (formData: FormData) {
 
     const organizationsApi = new OrganizationsApi(config);
     // const usersApi = new UsersApi(config); // set up for the error explained on line 101
-    const name = formData.get('orgName') as string;
-
+    const name = formData.get("orgName") as string;
+    console.log("token", token);
     const newOrganization = await organizationsApi.createOrganization({
       createOrganizationRequest: { name },
     });
 
-    const currentSession = await getKindeServerSession()
-    const user = await currentSession.getUser()
+    const currentSession = getKindeServerSession();
+    const user = await currentSession.getUser();
 
-    const { organizations: allOrganizations } = await organizationsApi.getOrganizations()
+    const { organizations: allOrganizations } =
+      await organizationsApi.getOrganizations();
     const defaultOrganization = allOrganizations?.find(
       (org) => org.name === process.env.KINDE_DEFAULT_ORG_NAME
-    ) // did this to find it through the name, can be done directly through the org code
+    ); // did this to find it through the name, can be done directly through the org code
     // but this also proves the organizationsApi works as expected
-    
-    const usersOnDefaultOrganization = await organizationsApi.getOrganizationUsers({
-      orgCode: defaultOrganization?.code!,
-    }) // this accurately shows the user on the default organization before moving it to the new one
+
+    const usersOnDefaultOrganization =
+      await organizationsApi.getOrganizationUsers({
+        orgCode: defaultOrganization?.code!,
+      }); // this accurately shows the user on the default organization before moving it to the new one
 
     if (!defaultOrganization) {
-      throw new Error('Default organization not found')
+      throw new Error("Default organization not found");
     }
 
     // BUG?: we need to check if the user is on the default organization before removing it, otherwise it'll fail
@@ -82,23 +91,29 @@ export async function create (formData: FormData) {
     // causing the user to be on the default organization even after being moved to the new one
     // also, since the form is always visible, the user can try to create the organization twice
     // causing the user to be present on several organization, since the ideal would be only to be removed from the default
-    if (usersOnDefaultOrganization.organizationUsers?.find((orgUser) => orgUser.id === user.id)) {
+    if (
+      usersOnDefaultOrganization.organizationUsers?.find(
+        (orgUser) => orgUser.id === user.id
+      )
+    ) {
       await organizationsApi.removeOrganizationUser({
         orgCode: defaultOrganization.code!,
         userId: user.id,
-      }) // successfully removes user from default organization
+      }); // successfully removes user from default organization
     }
 
     await organizationsApi.addOrganizationUsers({
       orgCode: newOrganization.organization?.code!,
       addOrganizationUsersRequest: {
-        users: [{
-          id: user.id,
-        }],
+        users: [
+          {
+            id: user.id,
+          },
+        ],
       },
-    }) // successfully adds user to new organization
+    }); // successfully adds user to new organization
 
-    currentSession.refreshTokens() // BUG: this does nothing
+    await currentSession.refreshTokens(); // BUG: this does nothing
 
     // usersApi.refreshUserClaims({ userId: user.id }) // BUG? tried this, throws the following error
     /*
@@ -130,9 +145,9 @@ export async function create (formData: FormData) {
     */
     // where org_8af28535d419 is the default organization code
 
-    return newOrganization
+    return newOrganization;
   } catch (error) {
-    console.error(error)
-    throw error
+    console.error(error);
+    throw error;
   }
 }
